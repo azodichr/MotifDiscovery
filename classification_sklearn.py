@@ -185,7 +185,7 @@ def PR_Curve(y_pred, SAVE):
 if __name__ == "__main__":
     
   # Default code parameters
-  neg, pos, n, FEAT, SAVE, GS, ALG, PR, n_jobs = int(0), int(1), 50, 'all', 'test', 'False', 'RF', "False", 100
+  neg, pos, n, FEAT, SAVE, GS, ALG, PR, n_jobs = int(0), int(1), 50, 'all', 'test', 'False', 'RF', "False", 50
 
   # Default Random Forest parameters
   n_estimators, max_depth, max_features, criterion = 500, 10, "sqrt", "gini"

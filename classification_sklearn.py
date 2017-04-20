@@ -21,6 +21,7 @@ INPUTS:
   -n        Number of random balanced datasets to run. Default = 50
   -pos      String for what codes for the positive example (i.e. UUN) Default = 1
   -neg      String for what codes for the negative example (i.e. NNN) Default = 0
+  -class    String for what column has the class. Default = Class
 
 
 OUTPUT:
@@ -50,7 +51,8 @@ def GridSearch_RF(df):
     random_neg = all_neg.sample(n=pos_size, random_state = j)     #take random subset of negative examples - same size as positive
     df = pd.DataFrame.merge(all_pos, random_neg, how = 'outer')   #Make balanced dataframe
     
-    y = df['Class']   
+    y = df['Class']
+    y = y.astype('float64')   
     x = df.drop(['Class'], axis=1) 
 
     # Build model, run grid search with 10-fold cross validation and fit
@@ -89,7 +91,8 @@ def GridSearch_LinearSVC(df):
     random_neg = all_neg.sample(n=pos_size, random_state = j)     #take random subset of negative examples - same size as positive
     df = pd.DataFrame.merge(all_pos, random_neg, how = 'outer')   #Make balanced dataframe
     
-    y = df['Class']   
+    y = df['Class'] 
+    y = y.astype('float64')  
     x = df.drop(['Class'], axis=1) 
 
     # Build model, run grid search with 10-fold cross validation and fit
@@ -121,7 +124,8 @@ def RandomForest(df, n_estimators, max_depth, max_features, criterion, n_jobs):
   from sklearn.model_selection import cross_val_predict
   from sklearn.metrics import accuracy_score, f1_score
 
-  y = df['Class']   
+  y = df['Class']
+  y = y.astype('float64')   
   x = df.drop(['Class'], axis=1) 
   
   #Define the model
@@ -145,8 +149,10 @@ def LinearSVC(df, C, loss, max_iter, n_jobs):
   from sklearn.model_selection import cross_val_predict
   from sklearn.metrics import accuracy_score, f1_score
 
-  y = df['Class']   
+  y = df['Class']
+  y = y.astype('float64')   
   x = df.drop(['Class'], axis=1)  
+  
   
   #Define the model
   clf = LinearSVC(C=float(C), loss=loss, penalty='l2', max_iter=int(max_iter))
@@ -185,7 +191,7 @@ def PR_Curve(y_pred, SAVE):
 if __name__ == "__main__":
     
   # Default code parameters
-  neg, pos, n, FEAT, SAVE, GS, ALG, PR, n_jobs = int(0), int(1), 50, 'all', 'test', 'False', 'RF', "False", 100
+  neg, pos, n, FEAT, SAVE, GS, ALG, PR, n_jobs, class_col = int(0), int(1), 50, 'all', 'test', 'False', 'RF', "False", 100, 'Class'
 
   # Default Random Forest parameters
   n_estimators, max_depth, max_features, criterion = 500, 10, "sqrt", "gini"
@@ -206,6 +212,8 @@ if __name__ == "__main__":
           neg = sys.argv[i+1]
         if sys.argv[i] == "-pos":
           pos = sys.argv[i+1]
+        if sys.argv[i] == "-class":
+          class_col = sys.argv[i+1]
         if sys.argv[i] == "-n":
           n = int(sys.argv[i+1])
         if sys.argv[i] == "-alg":
@@ -230,7 +238,10 @@ if __name__ == "__main__":
   else:
     df = DF
 
-  
+  # If class column isn't already called class, specify its column name and it changes here
+  if class_col != 'Class':
+    df = df.rename(columns = {class_col:'Class'})
+
   # If list of features to include in analysis given (-feat), filter out all other features
   if FEAT != 'all':
     with open(FEAT) as f:
@@ -239,8 +250,15 @@ if __name__ == "__main__":
     df = df.loc[:,features]
 
   # Recode class as 1 for positive and 0 for negative, then divide into two dataframes.
-  df["Class"] = df["Class"].replace(pos, 1)
-  df["Class"] = df["Class"].replace(neg, 0)
+  df["Class"] = df["Class"].replace(pos, int(1))
+  df["Class"] = df["Class"].replace(neg, int(0))
+  
+  # Removes instances that aren't class 0 or 1 (i.e. limits it to two way classification)
+  df = df[(df.Class == 0) | (df.Class == 1)]
+ 
+  # Remove instances with NaN values
+  df = df.dropna(axis=0)
+  #print(df)
 
   # Determine number of positive and negative instances
   n_features = len(list(df.columns.values)[1:])

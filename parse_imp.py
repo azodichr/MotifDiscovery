@@ -7,6 +7,7 @@ Required input:
 Other options:
   -n : Gives top n most important features
   -p : Gives top percent p most important features
+  -value : default = True, if False then don't print pvalue in output
 
 """
 import os, sys
@@ -14,6 +15,8 @@ import operator
 n = "n"
 cutoff = "n"
 p = "n"
+value = "True"
+f = "help"
 
 for i in range (1,len(sys.argv),2):
 
@@ -25,6 +28,9 @@ for i in range (1,len(sys.argv),2):
     cutoff = sys.argv[i+1]
   if sys.argv[i] == '-p':    #Return the top p percent
     p = sys.argv[i+1]
+  if sys.argv[i] == '-value':    #Return the top p percent
+    value = sys.argv[i+1]
+
 
 def sort(f):
   dic = {}
@@ -36,32 +42,48 @@ def sort(f):
   if n == p == "n":
     name = f + "_sort"
     out = open(name, 'w')
-    for i in sorted_dic:
-      out.write("%s\t%s\n" % (i[0], i[1]))
+    if value == "True":
+      for i in sorted_dic:
+        out.write("%s\t%s\n" % (i[0], i[1]))
+    if value == "False" or value == "false" or value == "f":
+      for i in sorted_dic:
+        out.write("%s\n" % (i[0]))
 
   elif n != "n":
     name = f + "_top" + str(n)
     out = open(name, 'w')
     kmer_list = sorted_dic[0:n]
-    for i in kmer_list:
-      out.write("%s\t%s\n" % (i[0], i[1]))
+    if value == "True":
+      for i in kmer_list:
+        out.write("%s\t%s\n" % (i[0], i[1]))
+    if value == "False" or value == "false" or value == "f":
+      for i in kmer_list:
+        out.write("%s\n" % (i[0]))
 
   elif p != "n":
     name = f + "_top" + str(p) + "perc"
     out = open(name, 'w')
     top = int(float(len(sorted_dic)) * float(p) * 0.01)
     kmer_list = sorted_dic[0:top]
-    for i in kmer_list:
-      out.write("%s\t%s\n" % (i[0], i[1]))
+    if value == "True":
+      for i in kmer_list:
+        out.write("%s\t%s\n" % (i[0], i[1]))
+    if value == "False" or value == "false" or value == "f":
+      for i in kmer_list:
+        out.write("%s\n" % (i[0]))
 
 
 
 if ".txt" in f:
+  print("Parsing given file")
   sort(f)
 
 else:
+  print("Parsing all .imp files in directory")
   for j in os.listdir(f):
     if j.startswith(".") or not "_imp.txt" in j:
         pass
     else:
+      print(j)
       sort(j)
+

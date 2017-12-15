@@ -1,9 +1,7 @@
 """
 
-Merge kmer information into one database. 
-Inputs:
-
-python ~/GitHub/MotifDiscovery/pCRE_criteria.py -df ../NDD_Ras_FET01_df_p0.01.txt -WSC ../02_kmer_mapping/01_map_WithinSpeciesDiv/all_kmers.bed.SeqStats -enrich NDD_Ras_FET01_FETresults.txt -imp_RF NDD_Ras_FET01_RF_imp -imp_SVC NDD_Ras_FET01_SVC_imp -map ../02_kmer_mapping/all_kmers.gff -DHS ../02_kmer_mapping/all_kmers.gff.DHS_all_ovrlp -CNS ../02_kmer_mapping/all_kmers.gff.CNS_between_ovrlp  -FS NDD_Ras_df.txt_decisiontree_50 -TFBM_DAPSeq ../03_KnownTFBM_Similarity/02_DAP_Seq/kmers.txt.tamo-DAP_motifs.txt.tm_mod.txt -TFBM_CISBP ../03_KnownTFBM_Similarity/01_CIS_BP/kmers.txt.tamo-Athaliana_TFBM_v1.01.tm.index.direct.index.tm_mod.txt -Histone ../02_kmer_mapping/02_Histone/histone_overlap_files.txt
+Compiles information about pCREs into one database and performs statistical tests (Fisher's Exact & Welch's T-test)
+to look for differences between pCRE features in cluster vs. non-cluster gene promoters. 
 
 ##### Input #####
 Required:
@@ -17,13 +15,15 @@ Optional:
 -DHS                Also required (-map)
 -DAP                Also required (-map)
 -CNS                Also required (-map)
--WSC                Also required (-map)
+-WSC                Key file with histone markers, activation/repression status, and path to file. See azodichr/01_CombinedStress/Prasch_HD/07_6clusters/02_kmer_mapping/02_Histone/histone_overlap_files.txt). Also required (-map)
 -Histone            Txt file with histone overlap info (Col 1 = histone marker name, Col 2 = activator/repressor, Col 3 = full path to overlap file)
                     See: /mnt/home/azodichr/01_CombinedStress/Prasch_HD/07_6clusters/02_kmer_mapping/02_Histone/histone_overlap_files.txt
 -TFBM_CISBP         PCCD between kmers and CIS-BP motifs (mjliu/kmer_5/Athaliana_TFBM_v1.01.tm.index.direct.index.tm) using output from Ming's pipeline (~mjliu/kmer_5/kmer_5.sh)
 -TFBM_DAPSeq        PCCD between kmers and DAP-Seq motifs (ShiuLab/14_DAPseq/PWM_to_tamo/DAP_motifs.txt.tm) using output from Ming's pipeline (~mjliu/kmer_5/kmer_5.sh)
 -FS                 pCREs selected by decision tree feature selection rather than enrichement.
-
+-GO                 Results from GO analysis output from http://go.princeton.edu/. Uses only sig GO terms (azodichr/01_CombinedStress/Prasch_HD/07_6clusters/06_GOTerms/query_NNU.txt)
+-arules             Dataframe with association rules as features (/mnt/home/azodichr/01_CombinedStress/Prasch_HD/07_6clusters/01_Kmer_Features/NNU_Ras_FET01_df_p0.01.txt_onlyARs_sup0.2_conf0.2_lift)
+-Dist               Distribution of pCREs compared to shuffled sequences (azodichr/01_CombinedStress/Prasch_HD/07_6clusters/02_kmer_mapping/03_pCRE_Distribution/observe_vs_random_100_pCREs_NNU)
 
 ##### Possible Output Columns #####
 pvalue              Enrichement Score 
@@ -45,11 +45,13 @@ DHS_pval            Significance score for DHS FET
 CNS_Odds            Fisher's Exact Test comparing pCREs overlapping with CNS sites in cluster and non-cluster genes
 CNS_pval            Significance score for CNS FET
 FS_ovlp             Does the k-mer overlap with one of the 6-mers identified to predict the cluster using feature selection
+arule               Does the pCRE belong to a significant association rule (Check out README.txt file to see pipeline for finding sig. arules)
 CISBP_TFBM          Best match known TFBM from the CIS-BP Database
 CISBP_TFBM_PCCD     Similarity (PCC-Distance - lower = better match) to best match known TFBM from the CIS-BP Database
 DAPSeq_TFBM         Best match known TFBM from DAP-Seq Database
 DAPSeq_TFBM_PCCD    Similarity (PCC-Distance - lower = better match) to best match known TFBM from DAP-Seq Database
-
+GO_TERM             Created for each significant GO term, number of genes with a kmer present in the GO term
+GO_TERM_%           Created for each significant GO term, percent of genes in the GO category that have the k-mer
 
 """
 import sys
@@ -58,8 +60,8 @@ np.set_printoptions(threshold=np.inf)
 import pandas as pd
 from scipy import stats
 
-DF = ENRICH = IMP_RF = IMP_SVC = MAP = DHS = CNS = WSC = TFBM = DAP = FS = TFBM_CISBP = TFBM_DAPSeq = HIST = False
-
+DF = ENRICH = IMP_RF = IMP_SVC = MAP = DHS = CNS = GO = WSC = TFBM = DAP = FS = TFBM_CISBP = TFBM_DAPSeq = HIST = ARULES = DIST = False
+#act_repress = 'activation'
 
 def ovrp_enriched(e_df, hits):
   """ Function to calculate enrichement of overlap with feature in cluster compared to non-cluster genes 
@@ -88,6 +90,10 @@ def ovrp_enriched(e_df, hits):
   hits['t4'] = hits['Hits_neg_pres'] - hits['t3']
   hits = hits.fillna(0)
 
+  #if act_repress == "repression":
+    #hits['temp'] = hits.apply(lambda r: stats.fisher_exact([[r.t2, r.t1], [r.t4, r.t3]]), axis=1)
+  #else:
+    #print("pos enriched:")
   hits['temp'] = hits.apply(lambda r: stats.fisher_exact([[r.t1, r.t2], [r.t3, r.t4]]), axis=1)
   hits[['Odds', 'pval']] = hits['temp'].apply(pd.Series)
 
@@ -122,7 +128,12 @@ for i in range (1,len(sys.argv),2):
         HIST = sys.argv[i+1]
       if sys.argv[i] == "-FS":
         FS = sys.argv[i+1]
-
+      if sys.argv[i] == "-arules":
+        ARULES = sys.argv[i+1]
+      if sys.argv[i] == "-GO":
+        GO = sys.argv[i+1]
+      if sys.argv[i] == "-Dist":
+        DIST = sys.argv[i+1]
 
 if len(sys.argv) <= 1:
   print(__doc__)
@@ -176,6 +187,7 @@ if MAP:
 
   # Perform Welch's T-test to look for statistical difference in pCRE copy number between pos and neg genes (non-normal dist)
   df_temp = pd.DataFrame(columns = ['Copy#_Tstat', 'Copy#_pval'], index = kmers)
+  #print(count_pos)
   for k in kmers:
     val1 = count_pos.loc[k]
     val2 = count_neg.loc[k]
@@ -206,14 +218,13 @@ if WSC:
   wsc = pd.read_csv(WSC, sep='\t', header = 0)
   wsc['gene_and_region'], wsc['region'], wsc['kmer'] = wsc['Region'].str.split('|').str
   wsc['chr'], wsc['start'], wsc['stop'], wsc['gene'] = wsc['gene_and_region'].str.split('_').str
-  wsc['NtDiversity'] = wsc['NtDiversity'].replace(to_replace = 'NoDiffSites', value = 0)
   subset = wsc[wsc['kmer'].isin(kmers)]
-
+  subset['NtDiversity'] = pd.to_numeric(subset['NtDiversity'], errors = 'coerce') 
+  #print(subset['NtDiversity'].unique())
+  
   # Get just pos/neg example genes and convert NtDiv to numeric
   subset_pos = subset[subset['gene'].isin(pos_genes)]
-  subset_pos['NtDiversity'] = pd.to_numeric(subset_pos['NtDiversity'], errors='coerce')
   subset_neg = subset[subset['gene'].isin(neg_genes)]
-  subset_neg['NtDiversity'] = pd.to_numeric(subset_neg['NtDiversity'], errors='coerce')
 
   # Calculate means NtDiv for each kmer for genes in pos and neg datasets
   av_pos_mean = pd.DataFrame(subset_pos.groupby(['kmer'])['NtDiversity'].mean())
@@ -234,6 +245,7 @@ if WSC:
 
   df = pd.merge(df, df_temp, how = 'left', right_index=True, left_index=True )
 
+
 if HIST:
   with open(HIST, 'r') as hist_files:
     for l in hist_files:
@@ -244,9 +256,11 @@ if HIST:
       pval = hist_name + "_" + act_repress[0] + "_pval"
       his_hits.columns = ["Hits_pos_pres", "Hits_neg_pres", "t1", "t3", "t2", "t4", 'temp', odds, pval]
       df = pd.merge(df, his_hits.loc[:, [odds, pval]], how = 'left', right_index=True, left_index=True)
+      odds_direction = 'pos_enriched'
 
 if FS:
   def overlap_function(x):
+    """ Checks to see if there is overlap between a 6mer and the kmer identified by feature selection """
     for six_mer in fs_kmers:
       if six_mer in x:
         return 1
@@ -256,25 +270,76 @@ if FS:
   df['FS_ovlp'] = df.index.values
   df['FS_ovlp'] = df['FS_ovlp'].apply(overlap_function)
 
+if ARULES:
+  ar_df = pd.read_csv(ARULES, sep="\t", header = 0, index_col=0)
+  features = np.delete(ar_df.columns.values, 0)
+  rule_kmers = []
+  for f in features:
+    for kmer in f.strip().split(":"):
+      rule_kmers.append(kmer)
+  rule_kmers = list(set(rule_kmers))
+  df['arule'] = 0
+  for k in rule_kmers:
+    df.set_value(k, 'arule', 1)
+  print(rule_kmers)
+
+if GO:
+  # Note that because the pCRE finding pipeline only looks at genes with promoters that don't 
+  # overlap neighboring genes, some GO term genes might not be in the dataframe...
+  
+  go = pd.read_csv(GO, sep='\t', header=0, index_col=1, skiprows = 9)
+  sig_go = go[go['CORRECTED_PVALUE']<=0.05]
+  subset = sig_go['ANNOTATED_GENES']
+  pos_hits_df = df_used[df_used.Class==1]
+
+  terms = subset.to_dict()
+
+  for t in terms:
+    tx = t.replace(' ', '_')
+    name1 = "GO_" + tx
+    count_array = []
+    for k in kmers:
+      count = 0
+      for term_genes in terms[t].split(", "):
+        try:
+          if pos_hits_df[k].loc[term_genes] == 1:
+            count += 1
+        except: 
+          pass #print(t,k)
+      count_array.append(count)
+    df[name1] = count_array
+
+  for t in terms:
+    tx = t.replace(' ', '_')
+    name = "GO_" + tx + "_%"
+    name1 = "GO_" + tx
+    df[name] = df[name1]/len(terms[t].split(", "))
+
+if DIST:
+  dist = pd.read_csv(DIST, header=None, sep='\t', index_col=0, names = ['1kb-900','900-800','800-700','700-600','600-500','500-400','400-300','300-200','200-100','100-TSS','drop'])
+  dist = dist.drop('drop',1)
+  dist['dist_max'] = dist.max(numeric_only=True, axis=1)
+  dist['dist_ave'] = dist.mean(numeric_only=True, axis=1)
+  df = pd.merge(df, dist, how = 'left', right_index=True, left_index=True)
 
 if TFBM_CISBP:
   cisbp = pd.read_csv(TFBM_CISBP, sep='\t', header=0, index_col=0)
   min_val =  pd.DataFrame(cisbp.min(axis=1), columns = ['CISBP_TFBM_PCCD'])
   min_id = pd.DataFrame(cisbp.idxmin(axis=1), columns = ['CISBP_TFBM'])
-
   df = pd.merge(df, min_val, how = 'left', right_index=True, left_index=True)
   df = pd.merge(df, min_id, how = 'left', right_index=True, left_index=True)
+  #df = df.drop_duplicates()
 
 if TFBM_DAPSeq:
   dapseq = pd.read_csv(TFBM_DAPSeq, sep='\t', header=0, index_col=0)
-  min_val =  pd.DataFrame(dapseq.min(axis=1), columns = ['DAPSeq_TFBM_PCCD'])
+  min_val = pd.DataFrame(dapseq.min(axis=1), columns = ['DAPSeq_TFBM_PCCD'])
   min_id = pd.DataFrame(dapseq.idxmin(axis=1), columns = ['DAPSeq_TFBM'])
-
   df = pd.merge(df, min_val, how = 'left', right_index=True, left_index=True)
   df = pd.merge(df, min_id, how = 'left', right_index=True, left_index=True)
+  #df = df.drop_duplicates()
 
-
-print(df.head())
-
+# For some reason the TFBM DISBP and DAPSeq sections duplicate the rows a bunch - this gets rid of the duplicates....
+df = df.reset_index().drop_duplicates(subset='index', keep='last').set_index('index')
+print(df.head(10))
 name = DF + '_pCRE_Criteria'
 df.to_csv(name, sep = '\t')

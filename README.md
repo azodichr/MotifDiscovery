@@ -20,6 +20,40 @@ Nov 13 2015 : Alter script so that enriched kmers are lengthened by 1 bp until t
 
 Oct 26 2015 : Switch from Python+R Pipeline to running everything in Python, this included changing to include reverse complement information, and to run the ML using 20 sets of random negative example genes. 
 
+## Get positive and negative examples from log FC data set
+
+1. Get up-reg gene list (logFC >= 1, adj. p-val < 0.05), dwn-reg gene list (logFC <= -1, adj. p-val < 0.05), and negative gene list (logFC <= 0.1, adj. p-val > 0.05; logFC >= -0.1, adj. p-val > 0.05). 
+
+File needs to have a header, genes in first column and a log FC and p-value. Must indicate what columns are logFC and p-value
+
+    python ~/Github/MotifDiscovery/sum_contrasts_updownNC_genelist.py <logFC data with p-val> <indice with logFC> <indice with p-value>
+
+2. Set Up Your Files:
+
+Inside directory for Pairwise experiment make directories for FASTA files and Motif Lists:
+mkdir FastaFiles
+mkdir MotifLists
+
+Put cluster file in FastaFiles dir and get promoter sequence:
+
+    cd FastaFiles/
+    cp [pos_examples]
+
+    python /mnt/home/shius/codes/FastaManager.py -f getseq2 -fasta [promoter sequences] -name [pos examples]
+
+For arabidopsis you can use: /mnt/home/azodichr/01_DualStress_At/TAIR10_upstream1000_Alex_20101104.mod.fa
+
+Put negative example file in FastaFiles dir and get promoter sequence.
+
+    cp [neg_examples]
+    python /mnt/home/shius/codes/FastaManager.py -f getseq2 -fasta [promoter sequences] -name [neg examples]
+
+## Get enriched kmers
+
+1. get enriched kmer dataframe using Fisher's Exact Test
+
+        python ~/Github/MotifDiscovery/pCRE_Finding_FET.py -pos <pos fasta> -neg <neg fasta> -k ~/1-herb_CRE_project/motifs/6mer.txt -save <name of output files>
+
 ## Python Pipeline (most recent version)
 *Anytime you log in to HPC and want to use the pipeline you have to first run:
 

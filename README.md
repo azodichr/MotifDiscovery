@@ -50,9 +50,25 @@ Put negative example file in FastaFiles dir and get promoter sequence.
 
 ## Get enriched kmers
 
-1. get enriched kmer dataframe using Fisher's Exact Test
+3. get enriched kmer dataframe using Fisher's Exact Test
 
-        python ~/Github/MotifDiscovery/pCRE_Finding_FET.py -pos <pos fasta> -neg <neg fasta> -k ~/1-herb_CRE_project/motifs/6mer.txt -save <name of output files>
+        export   PATH=/mnt/home/azodichr/miniconda3/bin:$PATH; python ~/Github/MotifDiscovery/pCRE_Finding_FET.py -pos <pos fasta> -neg <neg fasta> -k ~/1-herb_CRE_project/motifs/6mer.txt -save <name of output files>
+        
+     optional:
+      
+        -pos_str  String for what codes for the positive example (Default = 1)
+        -neg_str  String for what codes for the negative example (Default = 0)
+        -k        List of kmers to start with (/mnt/home/azodichr/ML_Python/6mers.txt or 5mers.txt)
+        -pval     P-value cut off for Fisher's exact test (Default = 0.01)
+        -FDR      Default: N. Designate (Y/N) if you want to run FDR correction during enrichment test
+        
+     Output:
+     
+        -SAVE_df_pPVAL.txt       Dataframe that goes into SK-learn for ML
+        
+   submit as qsub file
+   
+        python ~/Github/parse_scripts/qsub_hpc.py -f submit -c FET.runcc -u john3784 -w 239 -m 12 -wd ~/4-Trichome_project/FastaFiles/
 
 ## Python Pipeline (most recent version)
 *Anytime you log in to HPC and want to use the pipeline you have to first run:

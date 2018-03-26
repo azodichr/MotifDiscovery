@@ -55,6 +55,44 @@ Example of short runcc.txt file to submit to hpc:
     /mnt/home/azodichr/01_DualStress_At/12_RF_Python/13_OneTailed/01_p01/runcc_clusters_01.txt
 
 
+# Sequence similarity between pCREs and CIS-BP/DAP-Seq motifs
+From /mnt/home/mjliu/kmer_5/kmer_5.sh
+
+Moftif PCC distance
+#1. generate TAMO file based on motif sequence;
+module load TAMO
+python ~/Ara_Coronatine/DNA/pCRE/generate_PWM.py [motif list]
+Script: python /mnt/home/mjliu/Ara_Coronatine/DNA/pCRE/generate_PWM.py kmers10.txt
+
+#2. command will divide the tamo files and also generate the command_line files(named “runcc”)
+python /mnt/home/seddonal/scripts/5_motif_merging/pcc_merge_CC.py create_cc_2 -t [tamo_file_1] -t2 [tamo_file_2]
+
+CISBP: python /mnt/home/seddonal/scripts/5_motif_merging/pcc_merge_CC.py create_cc_2 -t kmers10.txt.tamo -t2 Athaliana_TFBM_v1.01.tm.index.direct.index.tm
+File from: /mnt/home/mjliu/kmer_5/Athaliana_TFBM_v1.01.tm.index.direct.index
+
+* Make sure all CIS-BP jobs finish running before moving on - the job files will overwrite eachother
+** Fix this bug later!
+DAPSeq: python /mnt/home/seddonal/scripts/5_motif_merging/pcc_merge_CC.py create_cc_2 -t kmers10.txt.tamo -t2 DAP_motifs.txt.tm
+File from: /mnt/research/ShiuLab/14_DAPseq/PWM_to_tamo/DAP_motifs.txt.tm
+
+#3. Run the command line from step 2 using qsub_hpcc
+python /mnt/home/shius/codes/qsub_hpc.py -f submit -c runcc -mo TAMO
+
+#4. Use the following to check that the jobs ran to completion, and rerun any failed jobs. This script will create a command line file for the failed jobs.
+python ~mjliu/script_from_Alex/pcc_merge_CC.py check_outputs -c runcc
+
+#5. Merge the outputs into one matrix
+python /mnt/home/seddonal/scripts/5_motif_merging/pcc_merge_CC.py combine_distance_matrix_2 -t [tamo_file_1] -t2 [tamo_file_2]
+
+CISBP: python ~mjliu/script_from_Alex/pcc_merge_CC.py combine_distance_matrix_2 -t kmers10.txt.tamo -t2 Athaliana_TFBM_v1.01.tm.index.direct.index.tm
+DAPSeq: python ~mjliu/script_from_Alex/pcc_merge_CC.py combine_distance_matrix_2 -t kmers10.txt.tamo -t2 DAP_motifs.txt.tm
+
+#6. In Excel add the column and row labels. Colums are the motifs from t2 in order of "Athaliana_TFBM_v1.01.tm.index.direct.index" and “DAP_motifs.txt.tm_index” respectively; the row represent the motifs from "t1"; the order is based on “kmers.txt”
+
+#the final PCC distance files: 
+kmers10.txt.tamo-Athaliana_TFBM_v1.01.tm.index.direct.index.tm.dm_mod
+kmers10.txt.tamo-DAP_motifs.txt.tm_mod
+
 #Old Python & R Pipeline (useful for doing paired kmer enrichment)
 Pairwise_kmers.py: Contains functions to make lists of paired kmers, make data frames of what genes contain those motifs, and run Fisher's Exact test to determine enrichment of those kmers/kmer pairs in the positive genes. 
 RandomForest.R: Runs Random Forest on input dataframe. 10 replicates and 10 fold cross validation. 

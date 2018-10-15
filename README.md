@@ -4,6 +4,8 @@ Original pipeline used python for processing dataframes and R for running Random
 New pipeline uses SciPy to determine enrichment, Numpy and Pandas for dataframe management, and SciKit Learn for RandomForest
 
 ## Updates to the Pipeline:
+October 15, 2018 : Added scripts to generate a tamo file and map to cis-bp
+
 May 19 2016 : Added option to run multiple test correction during kmer enrichment. Add "-FDR Y" to your command line to do so.
 
 April 27 2016 : Added MapEnrichedKmers.py to directory. This is the starting point for incorporating DAP-Seq data into the pipeline. Script is being actively developed by cbazodi and will likely be renamed!
@@ -113,24 +115,22 @@ From /mnt/home/mjliu/kmer_5/kmer_5.sh
 1. generate TAMO file based on motif sequence
 module load TAMO
 
-    python ~/Ara_Coronatine/DNA/pCRE/generate_PWM.py [motif list]
+    python generate_PWM.py [motif list]
     
-    python /mnt/home/mjliu/Ara_Coronatine/DNA/pCRE/generate_PWM.py kmers10.txt
+    python generate_PWM.py kmers10.txt
 
-2. command will divide the tamo files and also generate the command_line files(named “runcc”)
+2. command will divide the tamo files and also generate the command_line files(named “runcc”). Tamo 2 is the Athaliana file
 
         python /mnt/home/seddonal/scripts/5_motif_merging/pcc_merge_CC.py create_cc_2 -t [tamo_file_1] -t2 [tamo_file_2]
 
 CISBP: 
 
-    python /mnt/home/seddonal/scripts/5_motif_merging/pcc_merge_CC.py create_cc_2 -t kmers10.txt.tamo -t2 Athaliana_TFBM_v1.01.tm.index.direct.index.tm
+    python pcc_merge_CC.py create_cc_2 -t kmers10.txt.tamo -t2 Athaliana_TFBM_v1.01.tm.index.direct.index.tm
 
 File from: 
     
     /mnt/home/mjliu/kmer_5/Athaliana_TFBM_v1.01.tm.index.direct.index
-
-* Make sure all CIS-BP jobs finish running before moving on - the job files will overwrite eachother
-** Fix this bug later!
+    
 DAPSeq: 
 
     python /mnt/home/seddonal/scripts/5_motif_merging/pcc_merge_CC.py create_cc_2 -t kmers10.txt.tamo -t2 DAP_motifs.txt.tm
@@ -138,33 +138,53 @@ DAPSeq:
 File from: 
 
     /mnt/research/ShiuLab/14_DAPseq/PWM_to_tamo/DAP_motifs.txt.tm
-
+    
+ 
 3. Run the command line from step 2 using qsub_hpcc
 
         python /mnt/home/shius/codes/qsub_hpc.py -f submit -c runcc -mo TAMO
+        
+ check for failed jobs:
+ 
+        python pcc_merge_CC.py check_outputs -c runcc
+ 
+ output is a distance matrix, where the lower the number, the closer the distance (more similar the sequence)
+ * Make sure all CIS-BP jobs finish running before moving on - the job files will overwrite eachother
+** Fix this bug later!
 
-4. Use the following to check that the jobs ran to completion, and rerun any failed jobs. This script will create a command line file for the failed jobs.
+4. Merge the outputs into one matrix
 
-        python ~mjliu/script_from_Alex/pcc_merge_CC.py check_outputs -c runcc
+        python pcc_merge_CC.py combine_distance_matrix_2 -t [tamo_file_1] -t2 [tamo_file_2]
+        
+   
+    CISBP: 
 
-5. Merge the outputs into one matrix
+        python pcc_merge_CC.py combine_distance_matrix_2 -t kmers10.txt.tamo -t2 Athaliana_TFBM_v1.01.tm.index.direct.index.tm
 
-        python /mnt/home/seddonal/scripts/5_motif_merging/pcc_merge_CC.py combine_distance_matrix_2 -t [tamo_file_1] -t2 [tamo_file_2]
+    DAPSeq: 
 
-CISBP: 
+        python ~mjliu/script_from_Alex/pcc_merge_CC.py combine_distance_matrix_2 -t kmers10.txt.tamo -t2 DAP_motifs.txt.tm
 
-    python ~mjliu/script_from_Alex/pcc_merge_CC.py combine_distance_matrix_2 -t kmers10.txt.tamo -t2 Athaliana_TFBM_v1.01.tm.index.direct.index.tm
-
-DAPSeq: 
-
-    python ~mjliu/script_from_Alex/pcc_merge_CC.py combine_distance_matrix_2 -t kmers10.txt.tamo -t2 DAP_motifs.txt.tm
-
-6. In Excel add the column and row labels. Colums are the motifs from t2 in order of "Athaliana_TFBM_v1.01.tm.index.direct.index" and “DAP_motifs.txt.tm_index” respectively; the row represent the motifs from "t1"; the order is based on “kmers.txt”
+5. In Excel add the column and row labels. Colums are the motifs from t2 in order of "Athaliana_TFBM_v1.01.tm.index.direct.index" and “DAP_motifs.txt.tm_index” respectively; the row represent the motifs from "t1"; the order is based on “kmers.txt”
 
 final PCC distance files: 
 
     kmers10.txt.tamo-Athaliana_TFBM_v1.01.tm.index.direct.index.tm.dm_mod
     kmers10.txt.tamo-DAP_motifs.txt.tm_mod
+
+6. get enriched TF families
+ 
+            python TF_with_between_correlation_low_PCC_average.py [TF family file] [merged distance matrix from step 4]
+            
+            TF family file: Athaliana_TFBM_v1.01.tm.index.direct.index_subset.txt
+
+
+
+
+
+
+
+
 
 # Old Python & R Pipeline (useful for doing paired kmer enrichment)
 

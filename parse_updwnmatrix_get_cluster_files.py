@@ -26,6 +26,11 @@ def get_matrix_dict(inp, D):
 D= {}
 gene_dict, neg_list = get_matrix_dict(inp_matrix, D)
 print (gene_dict, "number of negative genes: ", len(neg_list))
+oup3= open("negative_gene_cluster.txt", "w")
+oup3.write("Gene\tClass\n")
+for gene in neg_list:
+    oup3.write("%s\t0\n" % gene)
+oup3.close()
 inp_matrix.close()
 #get up/down cluster files
 header = header.strip().split("\t")[1:]
@@ -63,8 +68,5 @@ for i in header:
         oup1.write("%s\t1\n" % gene)
     for gene in dwn_list:
         oup2.write("%s\t1\n" % gene)
-    for gene in neg_list:
-        oup1.write("%s\t0\n" % gene)
-        oup2.write("%s\t0\n" % gene)
     oup1.close()
     oup2.close() 

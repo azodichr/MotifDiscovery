@@ -4,6 +4,11 @@ This script contains a set of functions that are used to merge motifs based on
 there PCC score. The functions are based on scripts written by Cheng Zou, and
 are insterted here virtually unchanged.
 
+#need to purge then load modules first or using qsub_slurm.py
+module purge 
+module load TAMO/1.0
+module load Python/2.7.10 
+
 Usage:
 python pcc_merge_CC.py [Function] -w working directory -t TAMO_file
      
@@ -127,7 +132,7 @@ def create_cc_for_two(wdir, TAMO_file_1, TAMO_file_2):
         for j in range(n_split_2+1):
             # This command creates a matrix for comparing the ith TAMO to the 
             # jth TAMO.
-            oup.write("module load TAMO; module load SciPy; python %s/3.calculate_disctance_2_file.py -i %s_n%s -j  %s_n%s --dfunc pccrange\n" % (script_dir,TAMO_file_1,i,TAMO_file_2,j))
+            oup.write("python %s/3.calculate_disctance_2_file.py -i %s_n%s -j  %s_n%s --dfunc pccrange\n" % (script_dir,TAMO_file_1,i,TAMO_file_2,j))
     oup.close()
 
 def create_cc(wdir, TAMO_file, dfunc):

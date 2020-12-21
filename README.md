@@ -4,6 +4,8 @@ Original pipeline used python for processing dataframes and R for running Random
 New pipeline uses SciPy to determine enrichment, Numpy and Pandas for dataframe management, and SciKit Learn for RandomForest
 
 ## Updates to the Pipeline:
+December 2020 : Added scripts to use MEME suite in kmer correlation instead of TAMO
+
 October 15, 2018 : Added scripts to generate a tamo file and map to cis-bp
 
 May 19 2016 : Added option to run multiple test correction during kmer enrichment. Add "-FDR Y" to your command line to do so.
@@ -52,9 +54,9 @@ Put negative example file in FastaFiles dir and get promoter sequence.
 
 ## Get enriched kmers
 
-3. get enriched kmer dataframe using Fisher's Exact Test
+3. Get enriched kmer dataframe using Fisher's Exact Test
 
-        export   PATH=/mnt/home/azodichr/miniconda3/bin:$PATH; python ~/Github/MotifDiscovery/pCRE_Finding_FET.py -pos <pos fasta> -neg <neg fasta> -k ~/1-herb_CRE_project/motifs/6mer.txt -save <name of output files>
+       python ~/Github/MotifDiscovery/pCRE_Finding_FET.py -pos <pos fasta> -neg <neg fasta> -k ~/1-herb_CRE_project/motifs/6mer.txt -save <name of output files>
         
      optional:
       
@@ -72,45 +74,92 @@ Put negative example file in FastaFiles dir and get promoter sequence.
    
         python ~/Github/parse_scripts/qsub_hpc.py -f submit -c FET.runcc -u john3784 -w 239 -m 12 -wd ~/4-Trichome_project/FastaFiles/
 
-## Use ML Pipeline (most recent version) here to get class predictions
-*Anytime you log in to HPC and want to use the pipeline you have to first run:
-
-    export   PATH=/mnt/home/azodichr/miniconda3/bin:$PATH
-
-####If you already have your data table made (make sure Class is the 2nd column):
-
-RF_scikit.py requires you to import the dataframe, designate the save name, and the code for the positive and negative example (defaults = 1, 0). The default scoring method is F-measure, but you can change it to AUC-ROC using '-score roc_auc'. The default is also to use all of the features (i.e. columns) in your dataframe, if you only want to use a subset (i.e. the most important from a previous run) import a txt file with the names of the features you want to use '-feat keep.txt'.
-
-    python /mnt/home/azodichr/GitHub/MotifDiscovery/RF_scikit.py -df [dataframe file] -pos [positive example name i.e. NNU] -neg [negative example name i.e. NNN] -save [save name]
-
-Example of short runcc.txt file to submit to hpc
-
-    /mnt/home/azodichr/01_DualStress_At/14_LogicClusters/03_Features/runcc_Fm.txt
-
-####If you want to make a data table and run RandomForest in one step:
-      
-To run RandomForest_v2.0.py you need to import positive example and negative example FASTA files, a list of kmers to start searching with, and a save name. Once enriched kmers are detected, the script will lengthen the kmers all the way up to k+6 to test for enrichement of larger kmers. Finally it will create a data table and call RF_scikit.py to run balanced Random Forest. 
-
-    python /mnt/home/azodichr/GitHub/MotifDiscovery/RandomForest_v2.0.py -pos_file [FASTA FILE] -neg_file [FASTA FILE] -k [kmer list]  -save [UniqueSaveName]
-
-Optional inputs:
-
-    -pos: string for what codes for the positive example (Default = 1) (useful if you're later going to combine data sets for multiclass predictions)
-    -neg: string for what codes for the negative example (Default = 0)
-    -pval: Default = 0.01
-    -FDR: Default = N (optional Y). Benjamini & Hochberg FDR correction for kmer enrichment.
-    -score: Can change to roc_auc to get AUCROC values (Default = f1) f1 = F-measure
-    -feat: txt file with list of features you want to use in RF (i.e. most important features from previous run) Default = all
-
-Example of short runcc.txt file to submit to hpc:
-
-    /mnt/home/azodichr/01_DualStress_At/12_RF_Python/13_OneTailed/01_p01/runcc_clusters_01.txt
-
+## Use ML Pipeline (most recent version) here to get class predictions (see ML-pipeline https://github.com/bmmoore43/ML-Pipeline)
 
 # Sequence similarity between pCREs and CIS-BP/DAP-Seq motifs
-From /mnt/home/mjliu/kmer_5/kmer_5.sh
 
-# Motif PCC distance
+## Using MEME-suite
+
+1. Download and install MEME-suite
+
+    1. Download: http://meme-suite.org/doc/download.html
+    2. Installation instructions: http://meme-suite.org/doc/install.html
+    
+2. Installation on mac:
+
+    1. use anaconda to install python 2.7
+    
+    Create python 2.7 environment
+    
+        conda create --name py27 python=2.7
+        
+    Activate environment
+    
+        source activate py27
+        
+    2. change to meme directory and check dependencies
+    
+           cd meme-5.2.0
+           cd scripts/
+           perl dependencies.pl
+        
+    3. install any/all depedencies. try
+    
+           sudo cpan <library>
+        
+    or 
+        
+         sudo port install <library>
+
+    4. configure and make (in meme-5.2.0 folder)
+    
+           ./configure --prefix=$HOME/meme --with-url=http://meme-suite.org/ --enable-build-libxml2 --enable-build-libxslt
+        
+           make test
+        
+           make install
+        
+    5. check installation in bash profile
+    
+           nano ~/.bash_profile
+        
+3. Convert previous TAMO files to meme files (this is the case for TFBM and DAPseq sites) and kmers to memes
+
+    1. Add source/motif name to tamo file
+    
+           python ~/Desktop/post_doc/scripts/parse_tamo_get_meme.py <tamo file> <original index file>
+           
+           python ~/Desktop/post_doc/scripts/parse_tamo_get_meme.py Athaliana_TFBM_v1.01.tm.index.direct.index.tm.txt Athaliana_TFBM_v1.01.tm.index.direct.index
+           
+    2. convert tamo to meme
+    
+           tamo2meme <tamo file> > <meme output>
+           
+           /Users/Beth/Desktop/Github/meme-5.2.0/scripts/tamo2meme Athaliana_TFBM_v1.01.tm.index.direct.index.tm.tamo > Athaliana_TFBM_v1.01.tm.index.direct.index.tm.tamo_meme.txt
+           
+     3. convert kmers to memes using iupac2meme from meme suite
+     
+     no arguments, just run in folder where imp files are
+     
+            python ~/Desktop/post_doc/scripts/kmer_files_2_meme.py
+            
+     a meme file is created for each imp file
+     
+4. correlate kmer meme files to TFBM or DAPseq meme files using tomtom
+
+        ~/Desktop/Github/meme-5.2.0/src/tomtom [options] <query motif file> <target motif file>+
+        
+        ~/Desktop/Github/meme-5.2.0/src/tomtom -o Sp_0.7_2091_mRNA5utr_tomtom_out Sp_brachy_clusters_0.7_2091.txt_v3.2.2.txt_mRNA5utr.fa_random1_df_p0.01.txt_nodups.txt_LogReg_imp_meme.txt Athaliana_TFBM_v1.01.tm.index.direct.index.tm.tamo_meme.txt
+        
+5. sum tomtom output to make consensus sequence from kmers that map to the same motif
+
+   default uses a p-value of less than 0.01 as cutoff. Otherwise cutoff can be input as -pval or -qval
+
+        python ~/Desktop/Github/MotifDiscovery/sum_tomtom_out.py -dir ./
+     
+   output is fasta file that can be used as input to ggseqlogo.R to form consensus
+
+## Motif PCC distance using TAMO
 
 1. generate TAMO file based on motif sequence
 module load TAMO

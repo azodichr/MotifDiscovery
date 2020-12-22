@@ -33,7 +33,7 @@ File needs to have a header, genes in first column and a log FC and p-value. Mus
     
         python ~/Desktop/post_doc/scripts/FastaManager.py -f get_stretch4 -coords <gfffile.coord> -fasta <genome_fastafile>
 
-2. Set up your input files:
+4. Set up your input files:
 
 Inside directory for Pairwise experiment make directories for FASTA files and Motif Lists:
 mkdir FastaFiles
@@ -53,7 +53,7 @@ Put negative example file in FastaFiles dir and get promoter sequence.
 
 ## Get enriched kmers
 
-3. Get enriched kmer dataframe using Fisher's Exact Test
+5. Get enriched kmer dataframe using Fisher's Exact Test
 
        python ~/Github/MotifDiscovery/pCRE_Finding_FET.py -pos <pos fasta> -neg <neg fasta> -k ~/1-herb_CRE_project/motifs/6mer.txt -save <name of output files>
         

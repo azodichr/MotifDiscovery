@@ -1,28 +1,9 @@
 # MotifDiscovery
+The latest pipeline uses SciPy to determine enrichment, Numpy and Pandas for dataframe management, and SciKit Learn for RandomForest (via ML-pipeline Github repository).
+
 Original pipeline used python for processing dataframes and R for running Random Forest. For those instructions see bottom of the document (Python & R Pipeline).
 
-New pipeline uses SciPy to determine enrichment, Numpy and Pandas for dataframe management, and SciKit Learn for RandomForest
-
-## Updates to the Pipeline:
-December 2020 : Added scripts to use MEME suite in kmer correlation instead of TAMO
-
-October 15, 2018 : Added scripts to generate a tamo file and map to cis-bp
-
-May 19 2016 : Added option to run multiple test correction during kmer enrichment. Add "-FDR Y" to your command line to do so.
-
-April 27 2016 : Added MapEnrichedKmers.py to directory. This is the starting point for incorporating DAP-Seq data into the pipeline. Script is being actively developed by cbazodi and will likely be renamed!
-
-March 6 2016 : Change RandomForest_v2.0.py to call the random forest script from RF_scikit.py. That way ML runs are consistent between methods.
-
-Febrary 2 2016 : Add RF scikit.py. Which allows you to run RF ML on any dataframe given. Can select scoring type ('f1' = F-measure; 'roc_auc' = AUC-ROC  : default = f1) and give list of features to include (default is to use the whole dataframe)
-
-Nov 25 2015 : Simplify and standardize outputs (gives stdev and SE), also changed the random_state generator in RandomForestClassifier from an int to the default which is np.random.
-
-Nov 24 2015 : Make Fisher's Exact Test 1-Tailed (only looking at enrichment in positive class) & remove Training/Testing data split since using cross-validation
-
-Nov 13 2015 : Alter script so that enriched kmers are lengthened by 1 bp until they are no longer enriched
-
-Oct 26 2015 : Switch from Python+R Pipeline to running everything in Python, this included changing to include reverse complement information, and to run the ML using 20 sets of random negative example genes. 
+# Kmer finding and ML predictions
 
 ## Get positive and negative examples from log FC data set
 
@@ -32,7 +13,27 @@ File needs to have a header, genes in first column and a log FC and p-value. Mus
 
     python ~/Github/MotifDiscovery/sum_contrasts_updownNC_genelist.py <logFC data with p-val> <indice with logFC> <indice with p-value>
 
-2. Set Up Your Files:
+2. If you need to get clusters from a cluster file that have specific genes
+
+        python parse_clusterfile_get_gene-clust.py <gene1,gene2,gene3,etc.> <cluster file> <output filename>
+
+3. Get fasta file for promoter
+
+    get promoter coordinates based on transcription start site (TSS)
+
+        python ~/Desktop/post_doc/scripts/FastaManager.py -f gff_prom_to_coord2 -gff <gff file>
+        
+        output: gfffile.coord
+        
+    get promoter coordinates based on TSS and 5' UTR
+    
+        python ~/Desktop/post_doc/scripts/FastaManager.py -f gff_prom_to_coord_5utr -gff <gff file>
+        
+    get fasta sequence using coords file
+    
+        python ~/Desktop/post_doc/scripts/FastaManager.py -f get_stretch4 -coords <gfffile.coord> -fasta <genome_fastafile>
+
+2. Set up your input files:
 
 Inside directory for Pairwise experiment make directories for FASTA files and Motif Lists:
 mkdir FastaFiles
@@ -44,8 +45,6 @@ Put cluster file in FastaFiles dir and get promoter sequence:
     cp [pos_examples]
 
     python /mnt/home/shius/codes/FastaManager.py -f getseq2 -fasta [promoter sequences] -name [pos examples]
-
-For arabidopsis you can use: /mnt/home/azodichr/01_DualStress_At/TAIR10_upstream1000_Alex_20101104.mod.fa
 
 Put negative example file in FastaFiles dir and get promoter sequence.
 
@@ -68,15 +67,35 @@ Put negative example file in FastaFiles dir and get promoter sequence.
         
      Output:
      
-        -SAVE_df_pPVAL.txt       Dataframe that goes into SK-learn for ML
+        -SAVE_df_pPVAL.txt       Dataframe that goes into ML-pipeline
         
-   submit as qsub file
+   submit as qsub file (or chtc file) or
    
         python ~/Github/parse_scripts/qsub_hpc.py -f submit -c FET.runcc -u john3784 -w 239 -m 12 -wd ~/4-Trichome_project/FastaFiles/
+        
+   run on laptop (typically ~3 minutes per cluster. Unix loop example:
+   
+        for i in *pos.fa; do echo $i; python ~/Desktop/Github/MotifDiscovery/pCRE_Finding_FET.py -pos $i -neg neg.fa -k 6mer.txt -save random; done
 
-## Use ML Pipeline (most recent version) here to get class predictions (see ML-pipeline https://github.com/bmmoore43/ML-Pipeline)
+## Machine learning
 
-# Sequence similarity between pCREs and CIS-BP/DAP-Seq motifs
+**Use ML Pipeline (most recent version) here to get class predictions (see ML-pipeline https://github.com/bmmoore43/ML-Pipeline)**
+
+# Post-ML analysis
+
+## ML result overlap
+
+   sum ML results in folder. OPTIONAL: -matrix T or F ; T if you want F-measures of each run summed in a matrix to make into a heatmap
+   
+        python sum_ML-CRE_results.py -f <path to folder with .results.txt files> -name <name of output file> -matrix <T or F>
+
+## kmer-importance score overlap
+
+   sum importance files to get overlap of important kmers across multiple runs
+   
+        python get_kmer-imp_overlap.py <folder with imp files> <output filename>
+
+## Sequence similarity between pCREs and CIS-BP/DAP-Seq motifs
 
 ## Using MEME-suite
 
@@ -313,3 +332,23 @@ This will output two files:
   - q()
 
 
+## Updates to the Pipeline:
+December 2020 : Added scripts to use MEME suite in kmer correlation instead of TAMO
+
+October 15, 2018 : Added scripts to generate a tamo file and map to cis-bp
+
+May 19 2016 : Added option to run multiple test correction during kmer enrichment. Add "-FDR Y" to your command line to do so.
+
+April 27 2016 : Added MapEnrichedKmers.py to directory. This is the starting point for incorporating DAP-Seq data into the pipeline. Script is being actively developed by cbazodi and will likely be renamed!
+
+March 6 2016 : Change RandomForest_v2.0.py to call the random forest script from RF_scikit.py. That way ML runs are consistent between methods.
+
+Febrary 2 2016 : Add RF scikit.py. Which allows you to run RF ML on any dataframe given. Can select scoring type ('f1' = F-measure; 'roc_auc' = AUC-ROC  : default = f1) and give list of features to include (default is to use the whole dataframe)
+
+Nov 25 2015 : Simplify and standardize outputs (gives stdev and SE), also changed the random_state generator in RandomForestClassifier from an int to the default which is np.random.
+
+Nov 24 2015 : Make Fisher's Exact Test 1-Tailed (only looking at enrichment in positive class) & remove Training/Testing data split since using cross-validation
+
+Nov 13 2015 : Alter script so that enriched kmers are lengthened by 1 bp until they are no longer enriched
+
+Oct 26 2015 : Switch from Python+R Pipeline to running everything in Python, this included changing to include reverse complement information, and to run the ML using 20 sets of random negative example genes. 

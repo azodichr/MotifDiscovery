@@ -11,13 +11,15 @@ Original pipeline used python for processing dataframes and R for running Random
 
 File needs to have a header, genes in first column and a log FC and p-value. Must indicate what columns are logFC and p-value
 
-    python ~/Github/MotifDiscovery/sum_contrasts_updownNC_genelist.py <logFC data with p-val> <indice with logFC> <indice with p-value>
+    python ~/Github/MotifDiscovery/cluster_scripts/sum_contrasts_updownNC_genelist.py <logFC data with p-val> <indice with logFC> <indice with p-value>
+    
+    python ~/Desktop/Github/MotifDiscovery/cluster_scripts/sum_contrasts_updownNC_genelist.py sample_data/diffexpr_Wounding_6_sample.txt 1 2
 
-2. If you need to get clusters from a cluster file that have specific genes
+2. If you need to get clusters from a cluster file that have specific genes # this is not a necessary step
 
         python parse_clusterfile_get_gene-clust.py <gene1,gene2,gene3,etc.> <cluster file> <output filename>
 
-3. Get fasta file for promoter
+3. Get fasta file for promoter 
 
     get promoter coordinates based on transcription start site (TSS)
 
@@ -29,22 +31,26 @@ File needs to have a header, genes in first column and a log FC and p-value. Mus
     
         python ~/Desktop/post_doc/scripts/FastaManager.py -f gff_prom_to_coord_5utr -gff <gff file>
         
-    get fasta sequence using coords file
+        python FastaManager.py -f gff_prom_to_coord_5utr -gff sample_data/TAIR10_GFF3_genes.gff.txt
+        
+    get fasta sequence using coords file and genome fasta # the genome file in the sample data is not complete- download from TAIR
     
-        python ~/Desktop/post_doc/scripts/FastaManager.py -f get_stretch4 -coords <gfffile.coord> -fasta <genome_fastafile>
+        python ~/Github/FastaManager.py -f get_stretch4 -coords <gfffile.coord> -fasta <genome_fastafile>
+        
+        python FastaManager.py -f get_stretch4 -coords sample_data/TAIR10_GFF3_genes.gff.txt_prom-5utr.coord  -fasta sample_data/TAIR10_Athaliana_genome.fa 
+        
+        output: TAIR10_GFF3_genes.gff.txt_prom-5utr.coord.fa
 
 4. Set up your input files:
 
-Inside directory for Pairwise experiment make directories for FASTA files and Motif Lists:
-mkdir FastaFiles
-mkdir MotifLists
-
-Put cluster file in FastaFiles dir and get promoter sequence:
+Put cluster file in FastaFiles dir and get promoter sequence: # Note: Using TAIR10_upstream1000_allgenes.fa promoter file because TAIR10_GFF3_genes.gff.txt_prom-5utr.coord.fa will be incomplete if you use sample genome
 
     cd FastaFiles/
-    cp [pos_examples]
+    cp [pos_examples] ./
 
-    python /mnt/home/shius/codes/FastaManager.py -f getseq2 -fasta [promoter sequences] -name [pos examples]
+    python FastaManager.py -f getseq2 -fasta [promoter sequences] -name [pos examples]
+    
+    python FastaManager.py -f getseq2 -name sample_data/diffexpr_Wounding_6_sample.txt_up.txt  -fasta sample_data/TAIR10_upstream1000_allgenes.fa
 
 Put negative example file in FastaFiles dir and get promoter sequence.
 
@@ -55,7 +61,7 @@ Put negative example file in FastaFiles dir and get promoter sequence.
 
 5. Get enriched kmer dataframe using Fisher's Exact Test
 
-       python ~/Github/MotifDiscovery/pCRE_Finding_FET.py -pos <pos fasta> -neg <neg fasta> -k ~/1-herb_CRE_project/motifs/6mer.txt -save <name of output files>
+       python ~/Github/MotifDiscovery/pCRE_Finding_FET.py -pos <pos fasta> -neg <neg fasta> -k 6mer.txt -save <name of output files>
         
      optional:
       
@@ -68,12 +74,11 @@ Put negative example file in FastaFiles dir and get promoter sequence.
      Output:
      
         -SAVE_df_pPVAL.txt       Dataframe that goes into ML-pipeline
-        
-   submit as qsub file (or chtc file) or
+     
+        python pCRE_Finding_FET.py -pos sample_data/diffexpr_Wounding_6_sample.txt_up.txt.fa -neg sample_data/diffexpr_Wounding_6_sample.txt_neg.txt.fa -k sample_data/6mer.txt -save diffexpr_Wounding_6_sample.txt_up_p0.01.txt
    
-        python ~/Github/parse_scripts/qsub_hpc.py -f submit -c FET.runcc -u john3784 -w 239 -m 12 -wd ~/4-Trichome_project/FastaFiles/
-        
-   run on laptop (typically ~3 minutes per cluster. Unix loop example:
+           
+   can submit to HP computer or run on laptop (typically ~3 minutes per cluster. Unix loop example:
    
         for i in *pos.fa; do echo $i; python ~/Desktop/Github/MotifDiscovery/pCRE_Finding_FET.py -pos $i -neg neg.fa -k 6mer.txt -save random; done
 
@@ -231,7 +236,7 @@ File from:
 
     DAPSeq: 
 
-        python ~mjliu/script_from_Alex/pcc_merge_CC.py combine_distance_matrix_2 -t kmers10.txt.tamo -t2 DAP_motifs.txt.tm
+        python pcc_merge_CC.py combine_distance_matrix_2 -t kmers10.txt.tamo -t2 DAP_motifs.txt.tm
 
 5. In Excel add the column and row labels. Colums are the motifs from t2 in order of "Athaliana_TFBM_v1.01.tm.index.direct.index" and “DAP_motifs.txt.tm_index” respectively; the row represent the motifs from "t1"; the order is based on “kmers.txt”
 

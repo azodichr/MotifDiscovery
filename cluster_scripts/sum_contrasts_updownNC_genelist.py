@@ -11,8 +11,8 @@ output4 = open(str(sys.argv[1])+"_up.txt", "w")
 output5 = open(str(sys.argv[1])+"_dn.txt", "w")
 
 def add_data_to_dict(inp,Dpos,Dneg,FCind,pind):
+    header= inp.readline()
     for line in inp:
-        if line.startswith("So"):
             L = line.strip().split("\t")
             gene = L[0].split(".")[0]
             FC = L[FCind]
